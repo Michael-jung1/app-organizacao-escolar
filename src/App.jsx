@@ -366,16 +366,19 @@ export default function StudyCompanionApp() {
     }
   };
 
-  const confirmDelete = async () => {
+const confirmDelete = async () => {
     if (!user || !pendingDelete) return;
     const { type, id } = pendingDelete;
+    
+    // Fecha o modal imediatamente para dar sensação de velocidade ao usuário
+    const itemToDelete = pendingDelete;
+    setPendingDelete(null); 
+
     try {
       await deleteDoc(doc(db, 'users', user.uid, type, id));
     } catch (error) {
       console.error(error);
       showActionError('Não foi possível excluir. Verifique sua conexão.');
-    } finally {
-      setPendingDelete(null);
     }
   };
 
