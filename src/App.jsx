@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   BookOpen, Calendar, CheckSquare, Clock, GraduationCap, Home, 
   Plus, Settings, Trash2, X, ChevronRight, ChevronLeft, AlertCircle, Edit2, 
@@ -105,9 +105,11 @@ export default function StudyCompanionApp() {
 
   // Mostra um erro rápido tipo "toast" quando uma ação no Firestore falha
   const [actionError, setActionError] = useState('');
+  const actionErrorTimeoutRef = useRef(null);
   const showActionError = (msg) => {
+    if (actionErrorTimeoutRef.current) clearTimeout(actionErrorTimeoutRef.current);
     setActionError(msg);
-    setTimeout(() => setActionError(''), 4000);
+    actionErrorTimeoutRef.current = setTimeout(() => setActionError(''), 4000);
   };
 
   // --- Notas/médias ---
@@ -366,16 +368,15 @@ export default function StudyCompanionApp() {
     }
   };
 
-const confirmDelete = async () => {
+  const confirmDelete = async () => {
     if (!user || !pendingDelete) return;
     const { type, id } = pendingDelete;
+    setPendingDelete(null);
     try {
       await deleteDoc(doc(db, 'users', user.uid, type, id));
     } catch (error) {
       console.error(error);
       showActionError('Não foi possível excluir. Verifique sua conexão.');
-    } finally {
-      setPendingDelete(null); // <-- O `finally` já limpa o estado aqui
     }
   };
 
