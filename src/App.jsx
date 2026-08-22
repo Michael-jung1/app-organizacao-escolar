@@ -1160,7 +1160,7 @@ export default function StudyCompanionApp() {
         <GenericModal
           title={editingClass ? 'Editar Aula' : 'Nova Aula'}
           onClose={() => { setClassModalOpen(false); setEditingClass(null); }}
-          submitting={isSavingItem}
+          submitting={false}
           onSubmit={async (e) => {
             e.preventDefault();
             const fd = new FormData(e.target);
@@ -1168,20 +1168,18 @@ export default function StudyCompanionApp() {
               subject: fd.get('subject'), teacher: fd.get('teacher'),
               dayOfWeek: fd.get('dayOfWeek'), startTime: fd.get('startTime'), endTime: fd.get('endTime'), color: fd.get('color')
             };
-            setIsSavingItem(true);
+            const currentId = editingClass?.id;
+            setClassModalOpen(false);
+            setEditingClass(null);
             try {
-              if (editingClass) {
-                await updateDoc(doc(db, 'users', user.uid, 'classes', editingClass.id), data);
+              if (currentId) {
+                await updateDoc(doc(db, 'users', user.uid, 'classes', currentId), data);
               } else {
                 await addDoc(collection(db, 'users', user.uid, 'classes'), data);
               }
-              setClassModalOpen(false);
-              setEditingClass(null);
             } catch (error) {
               console.error(error);
               showActionError('Não foi possível salvar a aula. Verifique sua conexão.');
-            } finally {
-              setIsSavingItem(false);
             }
           }}
         >
@@ -1205,7 +1203,7 @@ export default function StudyCompanionApp() {
         <GenericModal
           title={editingTask ? 'Editar Trabalho' : 'Novo Trabalho'}
           onClose={() => { setTaskModalOpen(false); setEditingTask(null); }}
-          submitting={isSavingItem}
+          submitting={false}
           onSubmit={async (e) => {
             e.preventDefault();
             const fd = new FormData(e.target);
@@ -1226,20 +1224,18 @@ export default function StudyCompanionApp() {
               title: fd.get('title'), subject: fd.get('subject'), dueDate: fd.get('dueDate'),
               priority: fd.get('priority'), status, steps
             };
-            setIsSavingItem(true);
+            const currentId = editingTask?.id;
+            setTaskModalOpen(false);
+            setEditingTask(null);
             try {
-              if (editingTask) {
-                await updateDoc(doc(db, 'users', user.uid, 'tasks', editingTask.id), data);
+              if (currentId) {
+                await updateDoc(doc(db, 'users', user.uid, 'tasks', currentId), data);
               } else {
                 await addDoc(collection(db, 'users', user.uid, 'tasks'), data);
               }
-              setTaskModalOpen(false);
-              setEditingTask(null);
             } catch (error) {
               console.error(error);
               showActionError('Não foi possível salvar o trabalho. Verifique sua conexão.');
-            } finally {
-              setIsSavingItem(false);
             }
           }}
         >
@@ -1262,7 +1258,7 @@ export default function StudyCompanionApp() {
         <GenericModal
           title={editingExam ? 'Editar Prova' : 'Nova Prova'}
           onClose={() => { setExamModalOpen(false); setEditingExam(null); }}
-          submitting={isSavingItem}
+          submitting={false}
           onSubmit={async (e) => {
             e.preventDefault();
             const fd = new FormData(e.target);
@@ -1275,20 +1271,18 @@ export default function StudyCompanionApp() {
             });
 
             const data = { subject: fd.get('subject'), title: fd.get('title'), date: fd.get('date'), topics };
-            setIsSavingItem(true);
+            const currentId = editingExam?.id;
+            setExamModalOpen(false);
+            setEditingExam(null);
             try {
-              if (editingExam) {
-                await updateDoc(doc(db, 'users', user.uid, 'exams', editingExam.id), data);
+              if (currentId) {
+                await updateDoc(doc(db, 'users', user.uid, 'exams', currentId), data);
               } else {
                 await addDoc(collection(db, 'users', user.uid, 'exams'), data);
               }
-              setExamModalOpen(false);
-              setEditingExam(null);
             } catch (error) {
               console.error(error);
               showActionError('Não foi possível salvar a prova. Verifique sua conexão.');
-            } finally {
-              setIsSavingItem(false);
             }
           }}
         >
@@ -1304,7 +1298,7 @@ export default function StudyCompanionApp() {
         <GenericModal
           title={editingGrade ? 'Editar Nota' : 'Nova Nota'}
           onClose={() => { setGradeModalOpen(false); setEditingGrade(null); }}
-          submitting={isSavingItem}
+          submitting={false}
           onSubmit={async (e) => {
             e.preventDefault();
             const fd = new FormData(e.target);
@@ -1314,20 +1308,18 @@ export default function StudyCompanionApp() {
               value: Number(fd.get('value')),
               weight: Number(fd.get('weight')) || 1,
             };
-            setIsSavingItem(true);
+            const currentId = editingGrade?.id;
+            setGradeModalOpen(false);
+            setEditingGrade(null);
             try {
-              if (editingGrade) {
-                await updateDoc(doc(db, 'users', user.uid, 'grades', editingGrade.id), data);
+              if (currentId) {
+                await updateDoc(doc(db, 'users', user.uid, 'grades', currentId), data);
               } else {
                 await addDoc(collection(db, 'users', user.uid, 'grades'), data);
               }
-              setGradeModalOpen(false);
-              setEditingGrade(null);
             } catch (error) {
               console.error(error);
               showActionError('Não foi possível salvar a nota. Verifique sua conexão.');
-            } finally {
-              setIsSavingItem(false);
             }
           }}
         >
