@@ -358,7 +358,7 @@ export default function StudyCompanionApp() {
     if (!task) return;
 
     // Cria uma cópia nova de cada passo (não mutamos os objetos originais do estado)
-    const newSteps = task.steps.map((step, idx) =>
+    const newSteps = (task.steps || []).map((step, idx) =>
       idx === stepIndex ? { ...step, done: !step.done } : step
     );
 
@@ -381,7 +381,7 @@ export default function StudyCompanionApp() {
     const exam = exams.find(e => e.id === examId);
     if (!exam) return;
 
-    const newTopics = exam.topics.map((topic, idx) =>
+    const newTopics = (exam.topics || []).map((topic, idx) =>
       idx === topicIndex ? { ...topic, done: !topic.done } : topic
     );
 
@@ -423,7 +423,9 @@ export default function StudyCompanionApp() {
   // Gera e baixa um arquivo CSV a partir de uma lista de linhas (arrays de valores)
   const downloadCSV = (filename, headers, rows) => {
     const escapeCell = (val) => {
-      const str = String(val ?? '');
+      let str = String(val ?? '');
+      // Neutraliza fórmulas maliciosas (CSV Injection) que o Excel poderia executar
+      if (/^[=+\-@]/.test(str)) str = `'${str}`;
       // Coloca entre aspas se tiver vírgula, aspas ou quebra de linha
       if (/[",\n;]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
       return str;
@@ -472,6 +474,11 @@ export default function StudyCompanionApp() {
     reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
+
+        if (!Array.isArray(data)) {
+          alert("O arquivo precisa ser uma lista de horários (formato [...]). Gere o arquivo novamente pelo leitor de PDF.");
+          return;
+        }
         
         const timeMap = {
           "13:00": "13:45", "13:45": "14:30", "14:30": "15:30", 
@@ -495,7 +502,7 @@ export default function StudyCompanionApp() {
             const rawSubject = row[dia];
             const ignorar = ["Verificar PDF", "Extrair do PDF", "Livre", "-", "", null, undefined];
             
-            if (rawSubject && !ignorar.includes(rawSubject?.trim()) && !rawSubject.startsWith("Livre")) {
+            if (rawSubject && typeof rawSubject === 'string' && !ignorar.includes(rawSubject.trim()) && !rawSubject.startsWith("Livre")) {
               
               let subject = rawSubject;
               let teacher = "Não informado";
@@ -544,8 +551,8 @@ export default function StudyCompanionApp() {
 
   const renderHome = () => {
     const today = new Date().getDay(); 
-    const todayClasses = classes.filter(c => c.dayOfWeek === DAYS_OF_WEEK[today]).sort((a,b) => a.startTime.localeCompare(b.startTime));
-    const pendingTasks = tasks.filter(t => t.status !== 'concluído').sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate)).slice(0,3);
+    const todayClasses = classes.filter(c => c.dayOfWeek === DAYS_OF_WEEK[today]).sort((a,b) => (a.startTime || '').localeCompare(b.startTime || ''));
+    const pendingTasks = tasks.filter(t => t.status !== 'concluído').sort((a,b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0)).slice(0,3);
 
     return (
       <div className="space-y-6">
@@ -591,7 +598,7 @@ export default function StudyCompanionApp() {
                   </div>
                   <div className="text-right">
                     <span className={`px-2 py-1 rounded-lg text-xs font-bold ${t.priority === 'alta' ? 'bg-red-500/20 text-red-400' : t.priority === 'média' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                      {t.dueDate.split('-').reverse().join('/')}
+                      {(t.dueDate || '').split('-').reverse().join('/')}
                     </span>
                   </div>
                 </div>
@@ -626,7 +633,7 @@ export default function StudyCompanionApp() {
           <div key={day} className="bg-slate-800 rounded-2xl p-4 min-w-[280px] flex-shrink-0 border border-slate-700 snap-center">
             <h3 className="text-center font-bold text-yellow-500 mb-4">{day}</h3>
             <div className="space-y-3">
-              {classes.filter(c => c.dayOfWeek === day).sort((a,b) => a.startTime.localeCompare(b.startTime)).map(c => (
+              {classes.filter(c => c.dayOfWeek === day).sort((a,b) => (a.startTime || '').localeCompare(b.startTime || '')).map(c => (
                 <div key={c.id} className="relative group bg-slate-700 p-3 rounded-xl border border-slate-600 hover:border-slate-500 transition-all">
                   <div className="flex items-center mb-2">
                     <div className={`w-3 h-3 rounded-full ${c.color} mr-2`}></div>
@@ -663,9 +670,9 @@ export default function StudyCompanionApp() {
       .filter(t => {
         const q = taskSearch.trim().toLowerCase();
         if (!q) return true;
-        return t.title.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q);
+        return (t.title || '').toLowerCase().includes(q) || (t.subject || '').toLowerCase().includes(q);
       })
-      .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+      .sort((a,b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0));
 
     return (
     <div className="space-y-4">
@@ -728,7 +735,7 @@ export default function StudyCompanionApp() {
               
               <div className="flex items-center text-sm text-slate-300 mb-4 bg-slate-700/30 p-2 rounded-lg inline-block">
                 <Calendar className="w-4 h-4 mr-2 inline text-yellow-500" />
-                Entrega: {task.dueDate.split('-').reverse().join('/')}
+                Entrega: {(task.dueDate || '').split('-').reverse().join('/')}
               </div>
 
               {totalSteps > 0 && (
@@ -765,9 +772,9 @@ export default function StudyCompanionApp() {
       .filter(e => {
         const q = examSearch.trim().toLowerCase();
         if (!q) return true;
-        return e.subject.toLowerCase().includes(q) || e.title.toLowerCase().includes(q);
+        return (e.subject || '').toLowerCase().includes(q) || (e.title || '').toLowerCase().includes(q);
       })
-      .sort((a,b) => new Date(a.date) - new Date(b.date));
+      .sort((a,b) => new Date(a.date || 0) - new Date(b.date || 0));
 
     return (
     <div className="space-y-4">
@@ -796,7 +803,7 @@ export default function StudyCompanionApp() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredExams.map(exam => {
-          const examDate = new Date(exam.date + 'T00:00:00');
+          const examDate = new Date((exam.date || '1970-01-01') + 'T00:00:00');
           const today = new Date();
           today.setHours(0,0,0,0);
           const diffDays = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
@@ -818,7 +825,7 @@ export default function StudyCompanionApp() {
               <div className="flex items-center justify-between mb-4 bg-slate-700/50 p-3 rounded-xl border border-slate-600">
                 <div className="flex items-center text-slate-200">
                   <Calendar className="w-5 h-5 mr-2 text-purple-400" />
-                  {exam.date.split('-').reverse().join('/')}
+                  {(exam.date || '').split('-').reverse().join('/')}
                 </div>
                 <div className={`font-bold ${diffDays < 0 ? 'text-slate-500' : diffDays === 0 ? 'text-red-500' : diffDays <= 3 ? 'text-orange-500' : 'text-emerald-500'}`}>
                   {diffDays < 0 ? 'Passou' : diffDays === 0 ? 'Hoje!' : `Faltam ${diffDays} dias`}
@@ -1208,8 +1215,8 @@ export default function StudyCompanionApp() {
             }
           }}
         >
-          <input name="subject" placeholder="Matéria (ex: Matemática)" defaultValue={editingClass?.subject} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
-          <input name="teacher" placeholder="Professor" defaultValue={editingClass?.teacher} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="subject" placeholder="Matéria (ex: Matemática)" defaultValue={editingClass?.subject} required maxLength={100} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="teacher" placeholder="Professor" defaultValue={editingClass?.teacher} maxLength={100} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
           <select name="dayOfWeek" defaultValue={editingClass?.dayOfWeek} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3">
             {DAYS_OF_WEEK.slice(1,6).map(d => <option key={d} value={d}>{d}</option>)}
           </select>
@@ -1264,8 +1271,8 @@ export default function StudyCompanionApp() {
             }
           }}
         >
-          <input name="title" placeholder="Título (ex: Maquete Célula)" defaultValue={editingTask?.title} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
-          <input name="subject" placeholder="Matéria" defaultValue={editingTask?.subject} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="title" placeholder="Título (ex: Maquete Célula)" defaultValue={editingTask?.title} required maxLength={150} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="subject" placeholder="Matéria" defaultValue={editingTask?.subject} required maxLength={100} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
           <div className="flex space-x-3 mb-3">
             <input name="dueDate" type="date" defaultValue={editingTask?.dueDate} required className="w-1/2 bg-slate-700 text-white rounded-xl p-3" />
             <select name="priority" defaultValue={editingTask?.priority} className="w-1/2 bg-slate-700 text-white rounded-xl p-3">
@@ -1311,8 +1318,8 @@ export default function StudyCompanionApp() {
             }
           }}
         >
-          <input name="subject" placeholder="Matéria (ex: Química)" defaultValue={editingExam?.subject} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
-          <input name="title" placeholder="Assunto (ex: Prova Bimestral)" defaultValue={editingExam?.title} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="subject" placeholder="Matéria (ex: Química)" defaultValue={editingExam?.subject} required maxLength={100} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="title" placeholder="Assunto (ex: Prova Bimestral)" defaultValue={editingExam?.title} required maxLength={150} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
           <input name="date" type="date" defaultValue={editingExam?.date} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
           <textarea name="topics" placeholder="Tópicos (separados por vírgula)" defaultValue={editingExam?.topics?.map(t => t.title).join(', ')} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-4 h-24" />
         </GenericModal>
@@ -1327,10 +1334,15 @@ export default function StudyCompanionApp() {
           onSubmit={async (e) => {
             e.preventDefault();
             const fd = new FormData(e.target);
+            const gradeValue = Number(fd.get('value'));
+            if (isNaN(gradeValue) || gradeValue < 0 || gradeValue > 10) {
+              showActionError('Digite uma nota válida entre 0 e 10.');
+              return;
+            }
             const data = {
               subject: fd.get('subject'),
               title: fd.get('title'),
-              value: Number(fd.get('value')),
+              value: gradeValue,
               weight: Number(fd.get('weight')) || 1,
             };
             const currentId = editingGrade?.id;
@@ -1348,8 +1360,8 @@ export default function StudyCompanionApp() {
             }
           }}
         >
-          <input name="subject" placeholder="Matéria (ex: Matemática)" defaultValue={editingGrade?.subject} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
-          <input name="title" placeholder="Avaliação (ex: Prova 1º Bimestre)" defaultValue={editingGrade?.title} required className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="subject" placeholder="Matéria (ex: Matemática)" defaultValue={editingGrade?.subject} required maxLength={100} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
+          <input name="title" placeholder="Avaliação (ex: Prova 1º Bimestre)" defaultValue={editingGrade?.title} required maxLength={150} className="w-full bg-slate-700 text-white rounded-xl p-3 mb-3" />
           <div className="flex space-x-3 mb-4">
             <input name="value" type="number" step="0.1" min="0" max="10" placeholder="Nota (0 a 10)" defaultValue={editingGrade?.value} required className="w-1/2 bg-slate-700 text-white rounded-xl p-3" />
             <input name="weight" type="number" step="0.1" min="0.1" placeholder="Peso (padrão 1)" defaultValue={editingGrade?.weight || 1} className="w-1/2 bg-slate-700 text-white rounded-xl p-3" />
