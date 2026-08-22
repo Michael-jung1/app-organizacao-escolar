@@ -294,8 +294,33 @@ export default function StudyCompanionApp() {
 
   const requestNotifPermission = async () => {
     if (typeof Notification === 'undefined') return;
-    const result = await Notification.requestPermission();
-    setNotifPermission(result);
+    try {
+      const result = await Notification.requestPermission();
+      setNotifPermission(result);
+    } catch (e) {
+      console.error('Erro ao pedir permissão de notificação', e);
+    }
+  };
+
+  // Em PWA instalado (modo standalone), o navegador NÃO permite "new Notification()"
+  // direto — precisa passar pela Service Worker. Por isso tentamos a Service Worker
+  // primeiro, e só usamos "new Notification()" como alternativa em navegador comum.
+  // Tudo protegido por try/catch para nunca travar a tela do app.
+  const sendLocalNotification = async (title, options) => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration && registration.showNotification) {
+          await registration.showNotification(title, options);
+          return;
+        }
+      }
+      if (typeof Notification !== 'undefined') {
+        new Notification(title, options);
+      }
+    } catch (e) {
+      console.error('Não foi possível mostrar a notificação', e);
+    }
   };
 
   useEffect(() => {
@@ -316,7 +341,7 @@ export default function StudyCompanionApp() {
     if (newOnes.length === 0) return;
 
     newOnes.forEach(n => {
-      new Notification('StudyApp', { body: n.title, icon: '/favicon.svg' });
+      sendLocalNotification('StudyApp', { body: n.title, icon: '/icon-192.png' });
     });
 
     try {
